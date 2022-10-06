@@ -16,6 +16,12 @@ class MainClient(Client):
         self.random_agent = random_agent
         self.block = block
         self.info_ready = False
+        self.previous_action = {
+            "accelerate":False,
+            "left":False,
+            "right":False,
+            "brake":False,
+        }
         super(MainClient, self).__init__()
 
     def on_registered(self, iface: TMInterface) -> None:
@@ -36,6 +42,14 @@ class MainClient(Client):
         state = iface.get_simulation_state()
         final_state = state.position
         distance = np.linalg.norm(state.velocity)
+        final_state += [distance]
+        previous_action = [
+            int(self.previous_action["accelerate"]),
+            int(self.previous_action["left"]),
+            int(self.previous_action["right"]),
+            int(self.previous_action["brake"]),
+        ]
+        final_state += previous_action
         reward += distance * .00001
         reward += self.current_checkpoint * .01
         self.total_reward += reward
@@ -44,25 +58,33 @@ class MainClient(Client):
 
         # Data is ready to be picked up
         self.info_ready = True
-        print("READY AND BLOCKED")
+        #print("READY AND BLOCKED")
         while self.block:
             pass
 
-        print("I'm Free")
+        #print("I'm Free")
 
         if self.race_time == 0:
             self.state = iface.get_simulation_state()
 
         if self.random_agent:
             action = random.choice(actions)
-            if _time % 200 == 0:
-                iface.set_input_state(
-                    sim_clear_buffer=False, 
-                    accelerate=action["accelerate"], 
-                    left=action["left"], 
-                    right=action["right"],
-                    brake=action["brake"]
-                )
+            #if _time % 200 == 0:
+            iface.set_input_state(
+                sim_clear_buffer=False, 
+                accelerate=action["accelerate"], 
+                left=action["left"], 
+                right=action["right"],
+                brake=action["brake"]
+            )
+        # Change previous action
+        self.previous_action = {
+            "accelerate":action["accelerate"],
+            "left":action["left"],
+            "right":action["right"],
+            "brake":action["brake"],
+        }
+
         if self.finished or self.race_time >= self.max_race_time:
             print(self.current_checkpoint)
             print(self.total_reward)

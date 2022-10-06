@@ -6,13 +6,13 @@ import threading
 
 server_name = f'TMInterface{sys.argv[1]}' if len(sys.argv) > 1 else 'TMInterface0'
 print(f'Connecting to {server_name}...')
-Game_Engine = MainClient(random_agent=False, block=True)
+Game_Engine = MainClient(random_agent=True, block=True)
 
 #x = threading.Thread(target=run_client, args=(Game_Engine, server_name))
 def gym_example():
     while True:
-        time.sleep(5)
-        print(Game_Engine.info_ready)
+        time.sleep(2.01)
+        #print(Game_Engine.info_ready)
         if Game_Engine.info_ready:
             state = Game_Engine.state
             reward = Game_Engine.reward
