@@ -1,8 +1,10 @@
+from tracemalloc import start
 from tminterface.client import Client, run_client
 from RandomSim import MainClient
 import sys
 import time
 import threading
+from multiprocessing import Process
 
 server_name = f'TMInterface{sys.argv[1]}' if len(sys.argv) > 1 else 'TMInterface0'
 print(f'Connecting to {server_name}...')
@@ -21,6 +23,13 @@ def gym_example():
             Game_Engine.block = False
             print(state, reward, game_time)
 
-x = threading.Thread(target=gym_example)
+def start_engine():
+    run_client(Game_Engine, server_name)
+
+x = Process(target=gym_example)
 x.start()
-run_client(Game_Engine, server_name)
+#run_client(Game_Engine, server_name)
+#y = threading.Thread(target=start_engine)
+#y.start()
+p = Process(target=start_engine)
+p.start()

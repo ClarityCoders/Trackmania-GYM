@@ -2,13 +2,19 @@ import gym
 from gym import spaces
 from stable_baselines3.common.env_checker import check_env
 import numpy as np
+import threading
+from RandomSim import MainClient
 
-class Trackmania(gym.Env):
+class Trackmania(gym.Env,threading.Thread):
     """Custom Environment that follows gym interface"""
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
         super(Trackmania, self).__init__()
+        threading.Thread.__init__(self)
+        server_name = f'TMInterface{sys.argv[1]}' if len(sys.argv) > 1 else 'TMInterface0'
+        print(f'Connecting to {server_name}...')
+        self.Game_Engine = MainClient(random_agent=True, block=True)
         low = np.array(
             [
                 #Positional Elements
