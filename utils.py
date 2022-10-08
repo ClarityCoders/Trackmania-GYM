@@ -58,8 +58,8 @@ actions = [
     }
 ]
 
-def save_replay_script(iface: TMInterface, notes=""):
-    print(notes,"YEAH")
+def save_replay_script(inputs, notes=""):
+    #print(notes,"YEAH")
     path = "scripts"
     local = arrow.utcnow().to('US/Central')
     # Check whether the specified path exists or not
@@ -68,7 +68,6 @@ def save_replay_script(iface: TMInterface, notes=""):
         # Create a new directory because it does not exist
         os.makedirs(path)
 
-    inputs = iface.get_event_buffer().to_commands_str()
     text_file = open(f"scripts/{local.format('YYMMDD-HH-mm-ss-S')}-{notes}.txt", "w")
     text_file.write(inputs)
     text_file.close()

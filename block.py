@@ -28,8 +28,8 @@ def start_engine():
 
 x = Process(target=gym_example)
 x.start()
-#run_client(Game_Engine, server_name)
+run_client(Game_Engine, server_name)
 #y = threading.Thread(target=start_engine)
 #y.start()
-p = Process(target=start_engine)
-p.start()
+# p = Process(target=start_engine)
+# p.start()

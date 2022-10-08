@@ -15,9 +15,11 @@ class MainClient(Client):
         self.max_race_time = 30000
         self.random_agent = random_agent
         self.block = block
+        self.kill = False
         self.info_ready = False
+        self.action = 0
         self.previous_action = {
-            "accelerate":False,
+            "accelerate":True,
             "left":False,
             "right":False,
             "brake":False,
@@ -32,12 +34,33 @@ class MainClient(Client):
         iface.remove_state_validation()
         self.finished = False
 
+    def compare_actions(self, previous, current):
+        final = {'sim_clear_buffer':False}
+        if previous['accelerate'] != current['accelerate']:
+            final['accelerate'] = current['accelerate']
+        if previous['left'] != current['left']:
+            final['left'] = current['left']
+        if previous['right'] != current['right']:
+            final['right'] = current['right']
+        if previous['brake'] != current['brake']:
+            final['brake'] = current['brake']
+        return final
+
     def on_simulation_step(self, iface: TMInterface, _time: int):
+        if self.race_time == 0:
+            self.state = iface.get_simulation_state()
+        if _time < 0:
+            iface.set_input_state(
+                sim_clear_buffer=True
+            )
+        if self.finished or self.race_time >= self.max_race_time:
+            self.finished = True
+
         self.block = True
         reward = 0
-        #Add checkpoint
         reward += self.current_checkpoint
-
+        if self.current_checkpoint == 3:
+            reward += (self.max_race_time - self.race_time)
         self.race_time = _time
         state = iface.get_simulation_state()
         final_state = state.position
@@ -54,43 +77,31 @@ class MainClient(Client):
         reward += self.current_checkpoint * .01
         self.total_reward += reward
         self.reward = reward
-        self.state = final_state
-
+        self.state_env = final_state
+        
         # Data is ready to be picked up
         self.info_ready = True
-        #print("READY AND BLOCKED")
         while self.block:
             pass
 
-        #print("I'm Free")
+        action = actions[self.action]
+        if _time % 200 == 0:
+            final = self.compare_actions(self.previous_action, action)
+            iface.set_input_state(**final)
 
-        if self.race_time == 0:
-            self.state = iface.get_simulation_state()
-
-        if self.random_agent:
-            action = random.choice(actions)
-            #if _time % 200 == 0:
-            iface.set_input_state(
-                sim_clear_buffer=False, 
-                accelerate=action["accelerate"], 
-                left=action["left"], 
-                right=action["right"],
-                brake=action["brake"]
-            )
-        # Change previous action
-        self.previous_action = {
-            "accelerate":action["accelerate"],
-            "left":action["left"],
-            "right":action["right"],
-            "brake":action["brake"],
-        }
+            self.previous_action = {
+                "accelerate":action["accelerate"],
+                "left":action["left"],
+                "right":action["right"],
+                "brake":action["brake"],
+            }
 
         if self.finished or self.race_time >= self.max_race_time:
-            print(self.current_checkpoint)
-            print(self.total_reward)
+            inputs = iface.get_event_buffer().to_commands_str()
+            save_replay_script(inputs, str(int(self.total_reward)))
             self.reset()
-            save_replay_script(iface, str(self.current_checkpoint))
-            iface.rewind_to_state(self.state)
+            if not self.kill:
+                iface.rewind_to_state(self.state)
             self.finished = False
 
     def reset(self):
@@ -102,7 +113,8 @@ class MainClient(Client):
         if current == target:
             print(f'Finished the race at {self.race_time}')
             self.finished = True
-            iface.prevent_simulation_finish()
+            if not self.kill:
+                iface.prevent_simulation_finish()
 
     def on_simulation_end(self, iface, result: int):
         print('Simulation finished')
