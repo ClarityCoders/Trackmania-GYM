@@ -1,19 +1,30 @@
+from cmath import inf
 from random import seed
 import gym
 from gym import spaces
 from stable_baselines3.common.env_checker import check_env
 import numpy as np
-from RandomSim import MainClient
+from GameEngine import MainClient
 from tminterface.interface import TMInterface
 import time
 import signal
+import pickle
 
 class TrackmaniaENV(gym.Env):
-    """Custom Environment that follows gym interface"""
+    """
+    Custom Environment that follows gym interface
+    Pulls in data from GameEngine.py
+    """
     metadata = {'render.modes': ['human']}
 
     def __init__(self, server_name="TMInterface0"):
         super(TrackmaniaENV, self).__init__()
+
+        # Load Checkpoints
+        filename = 'CheckpointsReady'
+        unpickleFile = open(filename, 'rb')
+        self.checkpoints = pickle.load(unpickleFile, encoding='bytes')
+        unpickleFile.close()
 
         print(f'Connecting to {server_name}...')
         self.client = MainClient(random_agent=False, block=True)
@@ -42,8 +53,7 @@ class TrackmaniaENV(gym.Env):
                 0,
                 # Distance
                 0,
-                # Previous Inputs
-                0,
+                # Next Checkpoint
                 0,
                 0,
                 0
@@ -58,50 +68,69 @@ class TrackmaniaENV(gym.Env):
                 2000,
                 # Distance
                 2000,
-                # Previous Inputs
-                1,
-                1,
-                1,
-                1
+                2000,
+                2000,
+                2000
             ]
         ).astype(np.float32)
 
         self.observation_space = spaces.Box(low, high,seed=1989)
         self.action_space = spaces.Discrete(7)
+        self.steps = 0
+        self.checkpoints_local = [[0,0,0,0]]
 
     def step(self, action):
-        observation = [0,0,0,0,0,0,0,0]
+        observation = [0,0,0,0,0,0,0]
+        self.steps += 1
         reward = 0
         done = False
         info = {}
-        #time.sleep(2.01)
-        #print(client.info_ready)
+
+        # If we have more than one checkpoint
+        # See if we need to advance the checkpoint
+        if len(self.checkpoints_local) > 1:
+            if self.checkpoints_local[0][3] < self.steps:
+                self.checkpoints_local.pop(0)
+
+        # Block until the GameEngine.py data is ready.
         while not self.client.info_ready:
             time.sleep(0)
+        
+        # Data now ready
         if self.client.info_ready:
+            
+            # Send our action to the game Engine
             self.client.action = action
+
+            # Get the state from GameEngine.py
             state = self.client.state_env
+            # Add our checkpoint
+            state += [self.checkpoints_local[0][0], self.checkpoints_local[0][1], self.checkpoints_local[0][2]]
+            # Get Reward from GameEngine.py
+            # This should probably be moved to the ENV
             reward = self.client.reward
-            game_time = self.client.race_time
+
+            # Set it to block next turn
             self.client.info_ready = False
             self.client.block = False
             done = self.client.finished
-            #print(state, reward, game_time)
+
         observation = np.array(state, dtype=np.float32)
         return observation, reward, done, info
     def reset(self):
-        observation = np.array([0,0,0,0,0,0,0,0], dtype=np.float32)
-        print("reset")
+        self.steps = 0
+        self.checkpoints_local = self.checkpoints.copy()
+        observation = np.array([0,0,0,0,0,0,0], dtype=np.float32)
         return observation  # reward, done, info can't be included
     def render(self, mode='human'):
         pass
     def close (self):
         self.client.kill = True
         self.client.block = False
-        #print("Sleep Before Kill")
+
         self.iface.close()
         time.sleep(10)
-        #print("after Kill")
+
         self.client = None
         self.iface = None
 

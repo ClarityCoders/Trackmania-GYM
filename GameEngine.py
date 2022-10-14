@@ -2,7 +2,6 @@ from tminterface.interface import TMInterface
 from tminterface.client import Client, run_client
 import sys
 from utils import save_replay_script, actions
-import random
 import numpy as np
 
 class MainClient(Client):
@@ -19,7 +18,7 @@ class MainClient(Client):
         self.info_ready = False
         self.action = 0
         self.previous_action = {
-            "accelerate":True,
+            "accelerate":False,
             "left":False,
             "right":False,
             "brake":False,
@@ -32,6 +31,7 @@ class MainClient(Client):
 
     def on_simulation_begin(self, iface: TMInterface):
         iface.remove_state_validation()
+        iface.clear_event_buffer()
         self.finished = False
 
     def compare_actions(self, previous, current):
@@ -47,64 +47,74 @@ class MainClient(Client):
         return final
 
     def on_simulation_step(self, iface: TMInterface, _time: int):
-        if self.race_time == 0:
+        inputs = iface.get_event_buffer().to_commands_str()
+        self.race_time = _time
+        # if _time == -10:
+        #     print("-10")
+        if self.race_time == -10:
             self.state = iface.get_simulation_state()
-        if _time < 0:
+        if _time <= 0:
             iface.set_input_state(
                 sim_clear_buffer=True
             )
         if self.finished or self.race_time >= self.max_race_time:
             self.finished = True
 
-        self.block = True
-        reward = 0
-        reward += self.current_checkpoint
-        if self.current_checkpoint == 3:
-            reward += (self.max_race_time - self.race_time)
-        self.race_time = _time
-        state = iface.get_simulation_state()
-        final_state = state.position
-        distance = np.linalg.norm(state.velocity)
-        final_state += [distance]
-        previous_action = [
-            int(self.previous_action["accelerate"]),
-            int(self.previous_action["left"]),
-            int(self.previous_action["right"]),
-            int(self.previous_action["brake"]),
-        ]
-        final_state += previous_action
-        reward += distance * .00001
-        reward += self.current_checkpoint * .01
-        self.total_reward += reward
-        self.reward = reward
-        self.state_env = final_state
-        
-        # Data is ready to be picked up
-        self.info_ready = True
-        while self.block:
-            pass
+        if (_time % 200 == 0 and _time >= 0) or self.finished:
+            self.block = True
+            reward = 0
+            #reward += self.current_checkpoint
+            if self.current_checkpoint == 3:
+                reward += 10 * (self.max_race_time - self.race_time)
+            state = iface.get_simulation_state()
+            #drove off cliff
+            if state.position[1] < 10:
+                #print("OUCH")
+                reward -= 1
+            final_state = state.position
+            distance = np.linalg.norm(state.velocity)
+            final_state += [distance]
+            previous_action = [
+                int(self.previous_action["accelerate"]),
+                int(self.previous_action["left"]),
+                int(self.previous_action["right"]),
+                int(self.previous_action["brake"]),
+            ]
+            #final_state += previous_action
+            reward += distance * .005
+            reward += self.current_checkpoint * 1
+            self.total_reward += reward
+            self.reward = reward
+            self.state_env = final_state
+            
+            # Data is ready to be picked up
+            self.info_ready = True
+            while self.block:
+                pass
 
-        action = actions[self.action]
-        if _time % 200 == 0:
-            final = self.compare_actions(self.previous_action, action)
-            iface.set_input_state(**final)
+            action = actions[self.action]
+
+            #final = self.compare_actions(self.previous_action, action)
+            #iface.set_input_state(**final)
 
             self.previous_action = {
+                'sim_clear_buffer':False,
                 "accelerate":action["accelerate"],
                 "left":action["left"],
                 "right":action["right"],
                 "brake":action["brake"],
             }
-
+            iface.set_input_state(**self.previous_action)
         if self.finished or self.race_time >= self.max_race_time:
             inputs = iface.get_event_buffer().to_commands_str()
             save_replay_script(inputs, str(int(self.total_reward)))
-            self.reset()
+            self.reset(iface)
             if not self.kill:
                 iface.rewind_to_state(self.state)
             self.finished = False
 
-    def reset(self):
+    def reset(self, iface):
+        iface.clear_event_buffer()
         self.total_reward = 0
         self.current_checkpoint = 0
 
@@ -117,7 +127,7 @@ class MainClient(Client):
                 iface.prevent_simulation_finish()
 
     def on_simulation_end(self, iface, result: int):
-        print('Simulation finished')
+        print(f'Simulation finished: {self.total_reward}')
 
 
 def main():
