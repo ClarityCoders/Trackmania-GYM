@@ -21,7 +21,7 @@ def main():
         if steps == 1:
             start_time = time.time()
         elif steps % 5 == 0 and steps > 0:
-            locations.append([obs[0],obs[1],obs[1], steps])
+            locations.append([obs[0],obs[1],obs[2], steps])
             #print("CHECK")
         action = env.action_space.sample()
         obs, rew, done, info = env.step(random.randint(1,3))
@@ -29,7 +29,7 @@ def main():
         #env.render()
         reward_total += rew
         if done:
-            print(obs)
+            #print(obs)
             obs = env.reset()
         steps += 1
         #print(rew)
@@ -42,6 +42,8 @@ def main():
     print(reward_total)
     env.close()
     print(locations)
+
+    # Used to create checkpoints
     # filename = 'checkpoints'
     # file = open(filename, 'wb')
     # pickle.dump(locations, file)

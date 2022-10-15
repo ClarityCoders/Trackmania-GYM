@@ -27,7 +27,7 @@ class TrackmaniaENV(gym.Env):
         unpickleFile.close()
 
         print(f'Connecting to {server_name}...')
-        self.client = MainClient(random_agent=False, block=True)
+        self.client = MainClient(control_agent=False, block=True)
 
         # Start Server
         self.iface = TMInterface(server_name)
@@ -52,10 +52,6 @@ class TrackmaniaENV(gym.Env):
                 0,
                 0,
                 # Distance
-                0,
-                # Next Checkpoint
-                0,
-                0,
                 0
             ]
         ).astype(np.float32)
@@ -63,14 +59,11 @@ class TrackmaniaENV(gym.Env):
             [
                 #Positional Elements
                 # X,Y,Z
-                2000,
-                2000,
-                2000,
+                200,
+                200,
+                200,
                 # Distance
-                2000,
-                2000,
-                2000,
-                2000
+                500,
             ]
         ).astype(np.float32)
 
@@ -80,7 +73,7 @@ class TrackmaniaENV(gym.Env):
         self.checkpoints_local = [[0,0,0,0]]
 
     def step(self, action):
-        observation = [0,0,0,0,0,0,0]
+        observation = [0,0,0,0]
         self.steps += 1
         reward = 0
         done = False
@@ -103,9 +96,15 @@ class TrackmaniaENV(gym.Env):
             self.client.action = action
 
             # Get the state from GameEngine.py
-            state = self.client.state_env
+            #state = self.client.state_env
+            state = [
+                self.client.state_env[0] - self.checkpoints_local[0][0],
+                self.client.state_env[1] - self.checkpoints_local[0][1],
+                self.client.state_env[2] - self.checkpoints_local[0][2],
+                self.client.state_env[3]
+            ]
             # Add our checkpoint
-            state += [self.checkpoints_local[0][0], self.checkpoints_local[0][1], self.checkpoints_local[0][2]]
+            #state += [self.checkpoints_local[0][0], self.checkpoints_local[0][1], self.checkpoints_local[0][2]]
             # Get Reward from GameEngine.py
             # This should probably be moved to the ENV
             reward = self.client.reward
@@ -120,7 +119,7 @@ class TrackmaniaENV(gym.Env):
     def reset(self):
         self.steps = 0
         self.checkpoints_local = self.checkpoints.copy()
-        observation = np.array([0,0,0,0,0,0,0], dtype=np.float32)
+        observation = np.array([0,0,0,0], dtype=np.float32)
         return observation  # reward, done, info can't be included
     def render(self, mode='human'):
         pass

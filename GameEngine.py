@@ -5,14 +5,14 @@ from utils import save_replay_script, actions
 import numpy as np
 
 class MainClient(Client):
-    def __init__(self, random_agent=False, block=False) -> None:
+    def __init__(self, control_agent=False, block=False) -> None:
         self.state = None
         self.finished = False
         self.race_time = 0
         self.total_reward = 0
         self.current_checkpoint = 0
         self.max_race_time = 30000
-        self.random_agent = random_agent
+        self.control_agent = control_agent
         self.block = block
         self.kill = False
         self.info_ready = False
@@ -31,7 +31,8 @@ class MainClient(Client):
 
     def on_simulation_begin(self, iface: TMInterface):
         iface.remove_state_validation()
-        iface.clear_event_buffer()
+        if not self.control_agent:
+            iface.clear_event_buffer()
         self.finished = False
 
     def compare_actions(self, previous, current):
@@ -53,7 +54,7 @@ class MainClient(Client):
         #     print("-10")
         if self.race_time == -10:
             self.state = iface.get_simulation_state()
-        if _time <= 0:
+        if _time <= 0 and not self.control_agent:
             iface.set_input_state(
                 sim_clear_buffer=True
             )
@@ -104,7 +105,8 @@ class MainClient(Client):
                 "right":action["right"],
                 "brake":action["brake"],
             }
-            iface.set_input_state(**self.previous_action)
+            if not self.control_agent:
+                iface.set_input_state(**self.previous_action)
         if self.finished or self.race_time >= self.max_race_time:
             inputs = iface.get_event_buffer().to_commands_str()
             save_replay_script(inputs, str(int(self.total_reward)))
