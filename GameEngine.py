@@ -74,6 +74,10 @@ class MainClient(Client):
                 reward -= 1
             final_state = state.position
             distance = np.linalg.norm(state.velocity)
+
+            if distance < 2 and _time > 400:
+                self.finished = True
+
             final_state += [distance]
             previous_action = [
                 int(self.previous_action["accelerate"]),
