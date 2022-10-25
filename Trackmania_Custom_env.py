@@ -9,6 +9,7 @@ from tminterface.interface import TMInterface
 import time
 import signal
 import pickle
+import random
 
 class TrackmaniaENV(gym.Env):
     """
@@ -19,12 +20,24 @@ class TrackmaniaENV(gym.Env):
 
     def __init__(self, server_name="TMInterface0"):
         super(TrackmaniaENV, self).__init__()
-
+        self.all_checkpoints = []
         # Load Checkpoints
-        filename = 'CheckpointsReady'
+        # filename = 'checkpoints/checkpoints61'
+        # unpickleFile = open(filename, 'rb')
+        # self.all_checkpoints.append(pickle.load(unpickleFile, encoding='bytes'))
+        # unpickleFile.close()
+
+        # filename = 'checkpoints/checkpoints55'
+        # unpickleFile = open(filename, 'rb')
+        # self.all_checkpoints.append(pickle.load(unpickleFile, encoding='bytes'))
+        # unpickleFile.close()
+
+        filename = 'checkpoints/checkpoints54'
         unpickleFile = open(filename, 'rb')
         self.checkpoints = pickle.load(unpickleFile, encoding='bytes')
         unpickleFile.close()
+
+        #self.checkpoints = random.choice(self.all_checkpoints)
 
         print(f'Connecting to {server_name}...')
         self.client = MainClient(control_agent=False, block=True)
@@ -81,6 +94,7 @@ class TrackmaniaENV(gym.Env):
 
         # If we have more than one checkpoint
         # See if we need to advance the checkpoint
+        #print(self.checkpoints_local)
         if len(self.checkpoints_local) > 1:
             if self.checkpoints_local[0][3] < self.steps:
                 self.checkpoints_local.pop(0)
@@ -118,6 +132,9 @@ class TrackmaniaENV(gym.Env):
         return observation, reward, done, info
     def reset(self):
         self.steps = 0
+        #self.checkpoints = random.choice(self.all_checkpoints)
+        #print("CHECKPOINTS")
+        #print(self.checkpoints)
         self.checkpoints_local = self.checkpoints.copy()
         observation = np.array([0,0,0,0], dtype=np.float32)
         return observation  # reward, done, info can't be included

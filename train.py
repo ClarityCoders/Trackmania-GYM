@@ -33,10 +33,10 @@ if __name__ == '__main__':
     # Create the vectorized environment
     env = VecMonitor(SubprocVecEnv([make_env(env_id, i) for i in [0,1,2,3]]),"tmp/TestMonitor")
 
-    model = PPO('MlpPolicy', env, verbose=1, tensorboard_log="./board/", learning_rate=0.0003)
-    model = PPO.load("best.zip", env=env)
+    model = PPO('MlpPolicy', env, verbose=1, tensorboard_log="./board/", learning_rate=0.0000003)
+    model = PPO.load("83.zip", env=env)
     print("------------- Start Learning -------------")
     callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir)
-    model.learn(total_timesteps=5000000, callback=callback, tb_log_name="PPO-0003-200MS-CheckpointsDiff")
+    model.learn(total_timesteps=5000000, callback=callback, tb_log_name="PPO-0000003-200MS-83-80Checks")
     model.save(env_id)
     print("------------- Done Learning -------------")

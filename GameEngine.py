@@ -3,9 +3,11 @@ from tminterface.client import Client, run_client
 import sys
 from utils import save_replay_script, actions
 import numpy as np
+from time import time
 
 class MainClient(Client):
     def __init__(self, control_agent=False, block=False) -> None:
+        self.max_score = 0
         self.state = None
         self.finished = False
         self.race_time = 0
@@ -66,7 +68,7 @@ class MainClient(Client):
             reward = 0
             #reward += self.current_checkpoint
             if self.current_checkpoint == 3:
-                reward += 10 * (self.max_race_time - self.race_time)
+                reward += .1 * (self.max_race_time - self.race_time)
             state = iface.get_simulation_state()
             #drove off cliff
             if state.position[1] < 10:
@@ -75,8 +77,11 @@ class MainClient(Client):
             final_state = state.position
             distance = np.linalg.norm(state.velocity)
 
-            if distance < 2 and _time > 400:
-                self.finished = True
+            #print(_time)
+            # if distance < 6 and _time > 400:
+            #     self.finished = True
+            # elif distance < 50 and _time > 10000:
+            #     self.finished = True
 
             final_state += [distance]
             previous_action = [
@@ -94,7 +99,10 @@ class MainClient(Client):
             
             # Data is ready to be picked up
             self.info_ready = True
+            start = time()
             while self.block:
+                if time() - start > 10:
+                    break
                 pass
 
             action = actions[self.action]
@@ -113,7 +121,9 @@ class MainClient(Client):
                 iface.set_input_state(**self.previous_action)
         if self.finished or self.race_time >= self.max_race_time:
             inputs = iface.get_event_buffer().to_commands_str()
-            save_replay_script(inputs, str(int(self.total_reward)))
+            if self.max_score < self.total_reward:
+                self.max_score = self.total_reward
+                save_replay_script(inputs, str(int(self.total_reward)))
             self.reset(iface)
             if not self.kill:
                 iface.rewind_to_state(self.state)

@@ -70,7 +70,7 @@ def save_replay_script(inputs, notes=""):
         # Create a new directory because it does not exist
         os.makedirs(path)
 
-    text_file = open(f"scripts/{local.format('YYMMDD-HH-mm-ss-S')}-{notes}.txt", "w")
+    text_file = open(f"scripts/{notes}-{local.format('YYMMDD-HH-mm-ss-S')}.txt", "w")
     text_file.write(inputs)
     text_file.close()
 
